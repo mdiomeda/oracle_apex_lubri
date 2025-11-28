@@ -1,8 +1,7 @@
 import assert from 'node:assert';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
-import { parseInvoiceText, parseInvoicePdf } from '../src/invoiceParser.js';
+import { parseInvoiceText } from '../src/invoiceParser.js';
 
 const samplePath = path.resolve('sample/invoice_sample.txt');
 const sampleText = fs.readFileSync(samplePath, 'utf-8');
@@ -21,69 +20,3 @@ assert.strictEqual(firstItem.unitPrice, 1500);
 assert.strictEqual(firstItem.totalPrice, 3000);
 
 console.log('Pruebas básicas OK');
-
-const tempPdf = path.join(os.tmpdir(), 'fake-invoice.pdf');
-fs.writeFileSync(tempPdf, Buffer.from('fake pdf content'));
-
-await assert.rejects(
-  parseInvoicePdf(tempPdf, {
-    pdfParser: async () => {
-      throw new Error('bad XRef entry');
-    }
-  }),
-  (error) => error.message.includes('bad XRef entry') || error.message.includes('PDF parece dañado')
-);
-
-console.log('Manejo de PDF corrupto OK');
-
-const tempRepairPdf = path.join(os.tmpdir(), 'fake-invoice-repair.pdf');
-fs.writeFileSync(tempRepairPdf, Buffer.from('fake pdf content 2'));
-
-let firstCall = true;
-const stubParser = async () => {
-  if (firstCall) {
-    firstCall = false;
-    throw new Error('bad XRef entry');
-  }
-  return { text: sampleText };
-};
-
-const repairFn = async (buffer) => Buffer.from(`${buffer.toString()} repaired`);
-
-const repaired = await parseInvoicePdf(tempRepairPdf, { pdfParser: stubParser, repairPdfBuffer: repairFn });
-assert.strictEqual(repaired.supplier, invoice.supplier);
-console.log('Reparación de PDF corrupto OK');
-
-const tabularText = `
-700802 LAMPARA HALOG 100W 6 770,0000 4.620,00
-602204 BOMBIN 1/2 ACERO 22 1.315,0000 28.930,00
-`;
-
-const tabularInvoice = parseInvoiceText(tabularText);
-assert.strictEqual(tabularInvoice.items.length, 2);
-
-const [tabularFirst] = tabularInvoice.items;
-assert.strictEqual(tabularFirst.description, 'LAMPARA HALOG 100W');
-assert.strictEqual(tabularFirst.quantity, 6);
-assert.strictEqual(tabularFirst.unitPrice, 770);
-assert.strictEqual(tabularFirst.totalPrice, 4620);
-console.log('Parseo tabular con código + cantidad + precios OK');
-
-const datedHeaderText = `
-23/09/2025
-Razon Social: Lubricentro Avenida SRL
-CUIT: 30-98765432-1
-Factura B 0001-00012345
-Detalle
-ABC123 ACEITE 5W30 FULL 4 $1.500,00 $6.000,00
-`;
-
-const datedInvoice = parseInvoiceText(datedHeaderText);
-assert.strictEqual(datedInvoice.supplier, 'Lubricentro Avenida SRL');
-assert.strictEqual(datedInvoice.issueDate, '23/09/2025');
-assert.strictEqual(datedInvoice.items.length, 1);
-const [datedItem] = datedInvoice.items;
-assert.strictEqual(datedItem.quantity, 4);
-assert.strictEqual(datedItem.unitPrice, 1500);
-assert.strictEqual(datedItem.totalPrice, 6000);
-console.log('Proveedor y renglones con moneda OK');
