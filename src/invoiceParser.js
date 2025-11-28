@@ -101,58 +101,12 @@ export function parseInvoiceText(text) {
   };
 }
 
-async function ensurePdfParser(pdfParser) {
-  if (pdfParser) return pdfParser;
-  const pdfParsePath = path.join(process.cwd(), 'node_modules', 'pdf-parse', 'package.json');
-  if (!fs.existsSync(pdfParsePath)) {
-    throw new Error(
-      'Dependencia faltante: instala las dependencias con "npm install" en la raíz del proyecto antes de ejecutar el parser (se requiere pdf-parse).'
-    );
-  }
-  const { default: pdf } = await import('pdf-parse');
-  return pdf;
-}
-
-async function repairPdfBuffer(buffer, repairFn) {
-  if (repairFn) return repairFn(buffer);
-  const { PDFDocument } = await import('pdf-lib');
-  const doc = await PDFDocument.load(buffer, { ignoreEncryption: true, updateMetadata: false });
-  return Buffer.from(await doc.save());
-}
-
-function buildCorruptionHint(originalMessage) {
-  return `El PDF parece dañado o mal generado (por ejemplo, "bad XRef entry"). Abre el archivo y reexpórtalo como PDF estándar/PDF-A o imprime a PDF antes de volver a intentar. Detalle original: ${originalMessage}`;
-}
-
-export async function parseInvoicePdf(filePath, { pdfParser, repairPdfBuffer: repairFn } = {}) {
+export async function parseInvoicePdf(filePath) {
   const resolvedPath = path.resolve(filePath);
   const buffer = await fs.promises.readFile(resolvedPath);
-  const pdf = await ensurePdfParser(pdfParser);
-
-  const tryParse = async (inputBuffer) => {
-    const result = await pdf(inputBuffer);
-    return parseInvoiceText(result.text);
-  };
-
-  try {
-    return await tryParse(buffer);
-  } catch (error) {
-    const message = String(error?.message || error).toLowerCase();
-    const looksCorrupted = message.includes('xref') || message.includes('unexpected object');
-    const hint = looksCorrupted
-      ? buildCorruptionHint(error.message)
-      : `No se pudo leer el PDF. Confirma que el archivo no está protegido, corrupto o escaneado únicamente como imagen. Detalle original: ${error.message}`;
-
-    if (!looksCorrupted) throw new Error(hint);
-
-    try {
-      const repairedBuffer = await repairPdfBuffer(buffer, repairFn);
-      return await tryParse(repairedBuffer);
-    } catch (repairError) {
-      const repairMessage = repairError?.message || repairError;
-      throw new Error(`${hint} | Intentamos repararlo pero falló: ${repairMessage}`);
-    }
-  }
+  const { default: pdf } = await import('pdf-parse');
+  const result = await pdf(buffer);
+  return parseInvoiceText(result.text);
 }
 
 export default {

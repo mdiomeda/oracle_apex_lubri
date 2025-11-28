@@ -11,37 +11,12 @@ Este repositorio contiene una base JavaScript (apta para integrarse en Oracle AP
 - Node.js 18+.
 - Para usar `parse-invoice` instale las dependencias: `npm install`.
 
-### ¿Cómo instalar Node.js y npm en Windows?
-1. Descarga el instalador LTS oficial desde https://nodejs.org/es/download.
-2. Ejecuta el instalador y deja marcada la casilla **Automatically install the necessary tools** si aparece.
-3. Reinicia la terminal y verifica que todo quedó disponible:
-   ```powershell
-   node -v
-   npm -v
-   ```
-4. Si prefieres usar el gestor de paquetes de Windows, en PowerShell puedes ejecutar:
-   ```powershell
-   winget install OpenJS.NodeJS.LTS
-   ```
-
-## Uso rápido del CLI (local)
-1. Instala dependencias (solo la primera vez):
-   ```bash
-   npm install
-   ```
-
-   > Si ves un error tipo `Cannot find package 'pdf-parse'`, verifica que ejecutas el comando **desde la raíz del proyecto**
-   > y repite `npm install`. La dependencia `pdf-parse` se descarga automáticamente al correr ese comando.
-
-2. Ejecuta el parser sobre un PDF de factura:
-   ```bash
-   node bin/parse-invoice.js ./ruta/a/factura.pdf
-   # o con el binario global
-   npx parse-invoice ./ruta/a/factura.pdf
-   ```
-
-   > Si recibes un error `bad XRef entry` u otro mensaje de referencia cruzada al ejecutar `npx parse-invoice`, el PDF suele estar dañado o fue generado con un exportador defectuoso. El parser intentará repararlo automáticamente y volver a leerlo; si persiste el error, ábrelo en tu visor de PDF y reexpórtalo como **PDF estándar** o **PDF/A**, o bien imprímelo nuevamente a PDF y vuelve a intentarlo.
-
+## Uso rápido del CLI
+```bash
+node bin/parse-invoice.js ./ruta/a/factura.pdf
+# o con el binario global
+npx parse-invoice ./ruta/a/factura.pdf
+```
 La salida será un JSON similar a:
 ```json
 {
@@ -77,15 +52,13 @@ npm test
 ```
 Las pruebas incluidas operan sobre texto de ejemplo para validar las heurísticas básicas.
 
-## Demo web para subir un PDF (local)
-1. Instala dependencias (si no lo hiciste antes):
-   ```bash
-   npm install
-   ```
+## Demo web para subir un PDF
+Si quieres probar desde el navegador:
 
-2. Arranca el servidor de prueba:
-   ```bash
-   npm run web
-   ```
+```bash
+npm install
+npm run web
+```
 
-3. Abre `http://localhost:3000` en el navegador y selecciona tu PDF en el campo **Invoice PDF**. El backend (Express + multer) guarda el archivo en `/tmp`, invoca `parseInvoicePdf` y devuelve el JSON en pantalla.
+Luego abre `http://localhost:3000` y sube un PDF (campo `invoice`). El backend (Express + multer) guardará el archivo temporalmente,
+usará `parseInvoicePdf` y devolverá el JSON mostrado en pantalla.

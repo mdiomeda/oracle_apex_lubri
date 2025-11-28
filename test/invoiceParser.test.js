@@ -1,8 +1,7 @@
 import assert from 'node:assert';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
-import { parseInvoiceText, parseInvoicePdf } from '../src/invoiceParser.js';
+import { parseInvoiceText } from '../src/invoiceParser.js';
 
 const samplePath = path.resolve('sample/invoice_sample.txt');
 const sampleText = fs.readFileSync(samplePath, 'utf-8');
@@ -21,35 +20,3 @@ assert.strictEqual(firstItem.unitPrice, 1500);
 assert.strictEqual(firstItem.totalPrice, 3000);
 
 console.log('Pruebas básicas OK');
-
-const tempPdf = path.join(os.tmpdir(), 'fake-invoice.pdf');
-fs.writeFileSync(tempPdf, Buffer.from('fake pdf content'));
-
-await assert.rejects(
-  parseInvoicePdf(tempPdf, {
-    pdfParser: async () => {
-      throw new Error('bad XRef entry');
-    }
-  }),
-  (error) => error.message.includes('bad XRef entry') || error.message.includes('PDF parece dañado')
-);
-
-console.log('Manejo de PDF corrupto OK');
-
-const tempRepairPdf = path.join(os.tmpdir(), 'fake-invoice-repair.pdf');
-fs.writeFileSync(tempRepairPdf, Buffer.from('fake pdf content 2'));
-
-let firstCall = true;
-const stubParser = async () => {
-  if (firstCall) {
-    firstCall = false;
-    throw new Error('bad XRef entry');
-  }
-  return { text: sampleText };
-};
-
-const repairFn = async (buffer) => Buffer.from(`${buffer.toString()} repaired`);
-
-const repaired = await parseInvoicePdf(tempRepairPdf, { pdfParser: stubParser, repairPdfBuffer: repairFn });
-assert.strictEqual(repaired.supplier, invoice.supplier);
-console.log('Reparación de PDF corrupto OK');
