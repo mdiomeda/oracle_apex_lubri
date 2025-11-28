@@ -101,32 +101,12 @@ export function parseInvoiceText(text) {
   };
 }
 
-export async function parseInvoicePdf(filePath, { pdfParser } = {}) {
+export async function parseInvoicePdf(filePath) {
   const resolvedPath = path.resolve(filePath);
   const buffer = await fs.promises.readFile(resolvedPath);
-  let pdf = pdfParser;
-
-  if (!pdf) {
-    const pdfParsePath = path.join(process.cwd(), 'node_modules', 'pdf-parse', 'package.json');
-    if (!fs.existsSync(pdfParsePath)) {
-      throw new Error(
-        'Dependencia faltante: instala las dependencias con "npm install" en la raíz del proyecto antes de ejecutar el parser (se requiere pdf-parse).'
-      );
-    }
-    ({ default: pdf } = await import('pdf-parse'));
-  }
-
-  try {
-    const result = await pdf(buffer);
-    return parseInvoiceText(result.text);
-  } catch (error) {
-    const message = String(error?.message || error).toLowerCase();
-    const looksCorrupted = message.includes('xref') || message.includes('unexpected object');
-    const hint = looksCorrupted
-      ? 'El PDF parece dañado o mal generado (por ejemplo, "bad XRef entry"). Abre el archivo y reexpórtalo como PDF estándar/PDF-A o imprime a PDF antes de volver a intentar.'
-      : 'No se pudo leer el PDF. Confirma que el archivo no está protegido, corrupto o escaneado únicamente como imagen.';
-    throw new Error(`${hint} Detalle original: ${error.message}`);
-  }
+  const { default: pdf } = await import('pdf-parse');
+  const result = await pdf(buffer);
+  return parseInvoiceText(result.text);
 }
 
 export default {
